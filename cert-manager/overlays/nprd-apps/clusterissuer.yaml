@@ -1,0 +1,67 @@
+# Let's Encrypt ClusterIssuer Overlay for nprd-apps
+#
+# This overlay configures the DNS provider for DNS-01 challenge
+# Configure your DNS provider below and create the corresponding secret
+#
+# DNS Provider Secret must be created manually in cert-manager namespace:
+# See secrets/cert-manager/README.md for instructions
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-dns01
+  labels:
+    app: cert-manager
+    managed-by: gitops
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@dataknife.net
+    privateKeySecretRef:
+      name: letsencrypt-dns01-key
+    solvers:
+    # Solver for *.dataknife.net wildcard
+    - dns01:
+        # OPTION 1 (Recommended): Delegate DNS to Cloudflare
+        # Keep domains at Namecheap, but use Cloudflare nameservers
+        # This gives you easy cert-manager integration with Cloudflare API
+        cloudflare:
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+        
+        # OPTION 2: Namecheap Webhook (if webhook is deployed)
+        # Namecheap doesn't have native cert-manager support
+        # Requires deploying a custom webhook provider
+        # webhook:
+        #   groupName: acme.webhook.namecheap.io
+        #   solverName: namecheap
+        #   config:
+        #     credentialsSecretRef:
+        #       name: namecheap-credentials
+        #       key: apiKey
+        #     usernameSecretRef:
+        #       name: namecheap-credentials
+        #       key: apiUser
+        
+        # OPTION 3: Other providers (if you switch DNS)
+        # route53:
+        #   region: us-east-1
+        #   accessKeyID: YOUR_ACCESS_KEY_ID
+        #   secretAccessKeySecretRef:
+        #     name: route53-credentials
+        #     key: secret-access-key
+      selector:
+        dnsNames:
+        - "*.dataknife.net"
+        - "dataknife.net"
+    # Solver for *.dataknife.ai wildcard
+    - dns01:
+        # Same DNS provider configuration as above
+        cloudflare:
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+      selector:
+        dnsNames:
+        - "*.dataknife.ai"
+        - "dataknife.ai"

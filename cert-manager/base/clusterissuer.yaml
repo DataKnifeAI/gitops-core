@@ -1,0 +1,65 @@
+# Let's Encrypt ClusterIssuer for Wildcard Certificates
+#
+# This ClusterIssuer uses DNS-01 challenge which is required for wildcard certificates
+# DNS-01 challenge requires DNS provider credentials configured via a secret
+#
+# To configure DNS provider credentials, create a secret in the cert-manager namespace:
+#   kubectl create secret generic <dns-provider-secret-name> \
+#     --from-literal=<api-key-field>=<your-api-key> \
+#     -n cert-manager
+#
+# Supported DNS providers include:
+# - Cloudflare (cloudflare)
+# - Route53 (route53)
+# - Google Cloud DNS (googleclouddns)
+# - Azure DNS (azuredns)
+# - And many others - see cert-manager documentation
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-dns01
+  labels:
+    app: cert-manager
+    managed-by: gitops
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration (required for Let's Encrypt)
+    # This will be overridden in overlay if needed
+    email: admin@dataknife.net
+    privateKeySecretRef:
+      name: letsencrypt-dns01-key
+    solvers:
+    # Solver for *.dataknife.net wildcard
+    - dns01:
+        # DNS provider - configure in overlay for cluster-specific providers
+        # Example: cloudflare
+        # Uncomment and configure based on your DNS provider:
+        # cloudflare:
+        #   apiTokenSecretRef:
+        #     name: cloudflare-api-token
+        #     key: api-token
+        # route53:
+        #   accessKeyID: <your-access-key-id>
+        #   secretAccessKeySecretRef:
+        #     name: route53-secret
+        #     key: secret-access-key
+        #   region: us-east-1
+      selector:
+        dnsNames:
+        - "*.dataknife.net"
+        - "dataknife.net"
+    # Solver for *.dataknife.ai wildcard
+    - dns01:
+        # Same DNS provider configuration as above
+      selector:
+        dnsNames:
+        - "*.dataknife.ai"
+        - "dataknife.ai"
+    # Fallback solver for any other domains (optional)
+    # - dns01:
+    #     cloudflare:
+    #       apiTokenSecretRef:
+    #         name: cloudflare-api-token
+    #         key: api-token
