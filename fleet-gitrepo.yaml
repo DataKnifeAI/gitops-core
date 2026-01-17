@@ -1,0 +1,18 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: gitops-core
+  namespace: fleet-default
+spec:
+  repo: https://github.com/surrealwolf/gitops-core
+  branch: main
+  paths:
+    - cert-manager/overlays/rancher-manager
+    - cert-manager/overlays/nprd-apps
+    - cert-manager/overlays/poc-apps
+    - cert-manager/overlays/prd-apps
+  # Note: Monitoring overlay directories only (not root or base)
+  # This prevents Fleet from creating duplicate bundles for base and overlay
+  # Each overlay contains all necessary files (copied from base)
+  clientSecretName: ""
+  helmSecretName: ""
