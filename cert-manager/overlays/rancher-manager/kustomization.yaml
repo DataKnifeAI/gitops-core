@@ -1,8 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: cert-manager
-
+# Note: Do NOT set namespace here. Resources have explicit namespaces:
+# - ClusterIssuer: cluster-scoped
+# - wildcard certs: cert-manager
+# - default-ingress cert + configmap: kube-system (avoids conflict with wildcard-dataknife-net secretName)
 resources:
   # Override ClusterIssuer with DNS provider configuration
   - clusterissuer.yaml
