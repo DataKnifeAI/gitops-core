@@ -1,0 +1,13 @@
+# Fleet configuration for cert-manager on prd-apps cluster
+# This ensures the overlay is deployed to the prd-apps cluster
+apiVersion: fleet.cattle.io/v1alpha1
+kind: Bundle
+metadata:
+  name: cert-manager-prd-apps
+  labels:
+    fleet.cattle.io/bundle-name: cert-manager-prd-apps
+spec:
+  targetRestrictions:
+    - clusterSelector:
+        matchLabels:
+          name: prd-apps

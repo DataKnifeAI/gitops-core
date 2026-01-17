@@ -1,0 +1,13 @@
+# Fleet configuration for cert-manager on poc-apps cluster
+# This ensures the overlay is deployed to the poc-apps cluster
+apiVersion: fleet.cattle.io/v1alpha1
+kind: Bundle
+metadata:
+  name: cert-manager-poc-apps
+  labels:
+    fleet.cattle.io/bundle-name: cert-manager-poc-apps
+spec:
+  targetRestrictions:
+    - clusterSelector:
+        matchLabels:
+          name: poc-apps

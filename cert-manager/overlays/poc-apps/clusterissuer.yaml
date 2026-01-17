@@ -1,4 +1,4 @@
-# Let's Encrypt ClusterIssuer Overlay for rancher-manager
+# Let's Encrypt ClusterIssuer Overlay for poc-apps
 #
 # This overlay configures the DNS provider for DNS-01 challenge
 # Configure your DNS provider below and create the corresponding secret

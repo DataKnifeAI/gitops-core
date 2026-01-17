@@ -1,0 +1,13 @@
+# Fleet configuration for cert-manager on rancher-manager cluster
+# This ensures the overlay is deployed to the rancher-manager cluster
+apiVersion: fleet.cattle.io/v1alpha1
+kind: Bundle
+metadata:
+  name: cert-manager-rancher-manager
+  labels:
+    fleet.cattle.io/bundle-name: cert-manager-rancher-manager
+spec:
+  targetRestrictions:
+    - clusterSelector:
+        matchLabels:
+          name: rancher-manager

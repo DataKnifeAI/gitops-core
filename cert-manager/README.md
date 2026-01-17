@@ -20,7 +20,10 @@ cert-manager/
 │   ├── kustomization.yaml    # Kustomize configuration
 │   └── README.md             # Base configuration documentation
 ├── overlays/                  # Cluster-specific overlays
-│   └── nprd-apps/            # nprd-apps cluster configuration
+│   ├── rancher-manager/      # rancher-manager cluster configuration
+│   ├── nprd-apps/            # nprd-apps cluster configuration
+│   ├── poc-apps/             # poc-apps cluster configuration
+│   └── prd-apps/             # prd-apps cluster configuration
 │       ├── clusterissuer.yaml # DNS provider configuration
 │       ├── kustomization.yaml # Overlay kustomization
 │       └── fleet.yaml        # Fleet targeting
@@ -49,14 +52,15 @@ cert-manager/
    ```
 
 3. **Configure ClusterIssuer**:
-   - Edit `overlays/nprd-apps/clusterissuer.yaml`
+   - Edit `overlays/{cluster-name}/clusterissuer.yaml` for each cluster
    - Uncomment and configure your DNS provider section
 
 ### 3. Deploy via GitOps
 
 The configuration is automatically deployed via Fleet when committed to Git:
-- Fleet monitors: `cert-manager/overlays/nprd-apps`
-- Changes are automatically synced to the cluster
+- Fleet monitors: `cert-manager/overlays/{cluster-name}`
+- Changes are automatically synced to each cluster
+- Wildcard certificates are deployed to all clusters: rancher-manager, nprd-apps, poc-apps, prd-apps
 
 ### 4. Verify Certificate Status
 
