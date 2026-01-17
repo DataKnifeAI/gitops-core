@@ -27,7 +27,7 @@ Let's Encrypt enforces [rate limits](https://letsencrypt.org/docs/rate-limits/).
 
 **Reference:** [New Certificates per Exact Set of Identifiers](https://letsencrypt.org/docs/rate-limits/#new-certificates-per-exact-set-of-identifiers)
 
-**Workaround:** Change the set by adding a cluster-specific identifier (e.g. `cert-<cluster>.dataknife.net`) so each cluster has a different set. New orders with the new set are not considered renewals and still count against other limits, but they avoid this one.
+**Workaround:** Change the set by adding a cluster-specific identifier. **Do not** use subdomains under your wildcard (e.g. `cert-<cluster>.dataknife.net` when `*.dataknife.net` is in the request)—Let's Encrypt rejects them as redundant. Use **node IPs** in `spec.ipAddresses` so each cluster has a different set. New orders with the new set are not considered renewals and still count against other limits, but they avoid this one.
 
 ---
 
@@ -97,24 +97,26 @@ The ClusterIssuer references this via `apiTokenSecretRef` (name `cloudflare-api-
 
 When the same wildcard (e.g. `*.dataknife.net`, `dataknife.net`) is issued on many clusters, the "exact set" is identical and you quickly hit the 5-per-7-days limit.
 
-**Approach:** Add one extra DNS name per cluster so each cluster has a different set, e.g.:
+**Do not use subdomains under the wildcard** (e.g. `cert-<cluster>.dataknife.net`): Let's Encrypt rejects them with *"Domain name 'X' is redundant with a wildcard domain in the same request. Remove one or the other."*
 
-- `cert-rancher-manager.dataknife.net`
-- `cert-nprd-apps.dataknife.net`
-- `cert-poc-apps.dataknife.net`
-- `cert-prd-apps.dataknife.net`
+**Approach: use node IPs in `spec.ipAddresses`.** Each cluster has different node IPs, so the set becomes unique per cluster, e.g.:
 
-These are subdomains of `dataknife.net`, so:
+- rancher-manager: `[*.dataknife.net, dataknife.net, 192.168.14.100, 192.168.14.101, 192.168.14.102]`
+- nprd-apps: `[*.dataknife.net, dataknife.net, 192.168.14.110, …]`
+- etc.
 
-- They are covered by `*.dataknife.net` in the ClusterIssuer selector.
-- DNS-01 can create `_acme-challenge.cert-<cluster>.dataknife.net` via the Cloudflare API.
-
-Add the same `cert-<cluster>.dataknife.net` to both:
+Add the same `ipAddresses` (that cluster’s node InternalIPs) to both:
 
 - `wildcard-dataknife-net` (in `cert-manager`)
 - `wildcard-dataknife-net-default-ingress` (in `kube-system`)
 
-so each cluster has one unique set for the .net certs. Two orders per cluster for that set (2 &lt; 5) is fine.
+so each cluster has one unique set for the .net certs. Two orders per cluster for that set (2 &lt; 5) is fine. Get node IPs with:
+
+```bash
+kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+```
+
+If node IPs change (e.g. node replacement), update the Certificate and renew.
 
 ---
 
@@ -194,7 +196,12 @@ On RKE2, the controller does **not** read `ingress-nginx-controller`, so that de
 ### "Too many certificates already issued for exact set of identifiers"
 
 - You’ve hit the [5 per exact set per 7 days](https://letsencrypt.org/docs/rate-limits/#new-certificates-per-exact-set-of-identifiers) limit.
-- Options: wait for refill (1 cert every 34 hours), or change the set (e.g. add `cert-<cluster>.<domain>`).
+- Options: wait for refill (1 cert every 34 hours), or change the set (e.g. add node IPs in `spec.ipAddresses`; do not add subdomains under the wildcard—they are rejected as redundant).
+
+### "Domain name 'X' is redundant with a wildcard domain in the same request"
+
+- You added a subdomain (e.g. `cert-rancher-manager.dataknife.net`) while `*.dataknife.net` is in the same certificate. Let's Encrypt rejects it.
+- **Fix:** Remove the subdomain from `dnsNames` and use `spec.ipAddresses` (e.g. node IPs) instead to get a unique set per cluster.
 
 ### Cloudflare: "Could not route to /client/v4/zones/..." or Invalid Object
 

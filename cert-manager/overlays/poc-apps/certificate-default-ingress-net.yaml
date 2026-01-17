@@ -31,6 +31,12 @@ spec:
   dnsNames:
     - "*.dataknife.net"
     - "dataknife.net"
-    - "cert-poc-apps.dataknife.net"  # cluster-specific: unique set per cluster to avoid Let's Encrypt "5 per exact set" rate limit
+  ipAddresses:  # node IPs: unique set per cluster (avoids "5 per exact set" rate limit; subdomains under *.dataknife.net rejected as redundant)
+    - 192.168.14.130
+    - 192.168.14.131
+    - 192.168.14.132
+    - 192.168.14.133
+    - 192.168.14.134
+    - 192.168.14.135
   # Certificate will be valid for 90 days (Let's Encrypt standard)
   # cert-manager will automatically renew 30 days before expiration
