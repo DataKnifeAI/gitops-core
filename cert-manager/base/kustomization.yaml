@@ -5,6 +5,9 @@ resources:
   - clusterissuer.yaml
   - certificate-wildcard-dataknife-net.yaml
   - certificate-wildcard-dataknife-ai.yaml
+  # Default ingress certificate (deployed to kube-system for nginx-ingress)
+  - certificate-default-ingress-net.yaml
+  - configmap-default-cert.yaml
 
 commonLabels:
   app: cert-manager

@@ -1,0 +1,19 @@
+# ConfigMap to configure nginx-ingress default SSL certificate
+#
+# This ConfigMap configures the nginx-ingress controller to use
+# wildcard-dataknife-net-tls as the default SSL certificate
+#
+# When an Ingress resource doesn't specify a TLS certificate,
+# this default certificate will be used automatically
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: kube-system
+  labels:
+    app: cert-manager
+    managed-by: gitops
+data:
+  # Default SSL certificate for nginx-ingress
+  # Format: namespace/secret-name
+  default-ssl-certificate: "kube-system/wildcard-dataknife-net-tls"

@@ -9,6 +9,9 @@ resources:
   # Certificate resources (copied from base for Fleet path resolution)
   - certificate-wildcard-dataknife-net.yaml
   - certificate-wildcard-dataknife-ai.yaml
+  # Default ingress certificate (for nginx-ingress default SSL cert)
+  - certificate-default-ingress-net.yaml
+  - configmap-default-cert.yaml
 
 commonLabels:
   app: cert-manager

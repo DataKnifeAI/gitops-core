@@ -105,6 +105,60 @@ spec:
                   number: 80
 ```
 
+### Default Ingress Certificate
+
+The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers.
+
+This means:
+- **Any Ingress without TLS configuration** will automatically use this certificate
+- **No need to specify `secretName`** in Ingress resources for dataknife.net domains
+- The certificate is automatically created in the `kube-system` namespace for nginx-ingress
+
+**Example Ingress without TLS specification (uses default certificate):**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+spec:
+  rules:
+    - host: app.dataknife.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app
+                port:
+                  number: 80
+  # No TLS section needed - default certificate will be used automatically
+```
+
+**Example Ingress with explicit TLS (still works, overrides default):**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+spec:
+  tls:
+    - hosts:
+        - app.dataknife.net
+      secretName: wildcard-dataknife-net-tls  # Explicit certificate
+  rules:
+    - host: app.dataknife.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app
+                port:
+                  number: 80
+```
+
 ### Sharing Certificates Across Namespaces
 
 Certificates create secrets in the `cert-manager` namespace. To use in other namespaces:

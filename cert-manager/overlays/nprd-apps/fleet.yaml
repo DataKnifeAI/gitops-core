@@ -1,5 +1,5 @@
 # Fleet configuration for cert-manager on nprd-apps cluster
-# This ensures the overlay is deployed to the correct cluster
+# This ensures the overlay is deployed to the nprd-apps cluster
 apiVersion: fleet.cattle.io/v1alpha1
 kind: Bundle
 metadata:
