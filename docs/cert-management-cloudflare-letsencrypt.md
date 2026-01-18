@@ -15,9 +15,11 @@ This document captures what we learned running cert-manager with Cloudflare (DNS
 This reduces certificate requests from **8 orders** (4 clusters × 2 certificates) to just **2 orders** (wildcard-dataknife-net, wildcard-dataknife-ai), staying well within Let's Encrypt's "5 per exact set" rate limit.
 
 **Certificates issued on rancher-manager:**
-- `cert-manager/wildcard-dataknife-net-tls`
-- `cert-manager/wildcard-dataknife-ai-tls`
-- `kube-system/wildcard-dataknife-net-tls` (for nginx default SSL)
+- `cert-manager/wildcard-dataknife-net-tls` (requested from Let's Encrypt)
+- `cert-manager/wildcard-dataknife-ai-tls` (requested from Let's Encrypt)
+- `kube-system/wildcard-dataknife-net-tls` (copied from `cert-manager/wildcard-dataknife-net-tls` for nginx default SSL)
+
+**Note:** We only request `wildcard-dataknife-net-tls` once in the `cert-manager` namespace. The secret is then copied to `kube-system` for the default ingress controller, avoiding duplicate Let's Encrypt requests for the same DNS names.
 
 **Syncing certificates:**
 
@@ -32,11 +34,34 @@ The sync script (`scripts/sync-certs-from-rancher-manager.sh`) copies secrets fr
 ```
 
 **Automation options:**
-- **Manual**: Run the script when certificates are renewed (cert-manager renews 30 days before expiration on `rancher-manager`)
-- **CronJob**: Deploy a CronJob in `rancher-manager` cluster that runs the sync script periodically (e.g., daily). The Job would need kubectl with access to all cluster contexts (kubeconfig stored as a Secret).
-- **External automation**: CI/CD pipeline or external scheduler that runs the script after detecting certificate renewal.
 
-**Note:** Since cert-manager renews certificates 30 days before expiration, syncing daily or weekly is sufficient to keep downstream clusters updated.
+1. **Kubernetes CronJob (Recommended)**: An automated CronJob is configured in the `rancher-manager` overlay that syncs certificates daily at 2 AM UTC. This is the preferred method for automatic syncing.
+
+   **Setup:**
+   ```bash
+   # Create the kubeconfig secret with credentials for all clusters
+   ./scripts/create-cert-sync-kubeconfig-secret.sh rancher-manager
+   ```
+
+   The CronJob resources are included in `cert-manager/overlays/rancher-manager/`:
+   - `serviceaccount-cert-sync.yaml` - ServiceAccount and RBAC
+   - `configmap-cert-sync-script.yaml` - Sync script
+   - `cronjob-cert-sync.yaml` - CronJob definition (daily at 2 AM UTC)
+
+   **Verify:**
+   ```bash
+   kubectl --context=rancher-manager get cronjob cert-sync -n cert-manager
+   kubectl --context=rancher-manager get jobs -n cert-manager -l purpose=cert-sync
+   ```
+
+2. **Manual**: Run the script manually when needed:
+   ```bash
+   ./scripts/sync-certs-from-rancher-manager.sh
+   ```
+
+3. **External automation**: CI/CD pipeline or external scheduler that runs the sync script after detecting certificate renewal.
+
+**Note:** Since cert-manager renews certificates 30 days before expiration, syncing daily (via CronJob) is sufficient to keep downstream clusters updated.
 
 ---
 

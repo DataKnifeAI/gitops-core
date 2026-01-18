@@ -188,6 +188,42 @@ Monitor renewal status:
 kubectl get certificates -n cert-manager -w
 ```
 
+## Certificate Syncing (Multi-Cluster)
+
+**Centralized Certificate Management**: Only `rancher-manager` cluster requests certificates from Let's Encrypt. TLS secrets are automatically synced to downstream clusters (`nprd-apps`, `poc-apps`, `prd-apps`) via a Kubernetes CronJob.
+
+This reduces Let's Encrypt certificate requests from 8 (4 clusters × 2 certs) to just 2 (wildcard-net, wildcard-ai), avoiding rate limits.
+
+### Automatic Sync via CronJob
+
+A CronJob is configured in `cert-manager/overlays/rancher-manager/` that syncs certificates daily at 2 AM UTC:
+
+**Setup:**
+```bash
+# Create kubeconfig secret with credentials for all clusters
+./scripts/create-cert-sync-kubeconfig-secret.sh rancher-manager
+```
+
+**Verify:**
+```bash
+# Check CronJob
+kubectl --context=rancher-manager get cronjob cert-sync -n cert-manager
+
+# Check recent sync jobs
+kubectl --context=rancher-manager get jobs -n cert-manager -l purpose=cert-sync
+
+# View sync job logs
+kubectl --context=rancher-manager logs -n cert-manager job/cert-sync-<timestamp>
+```
+
+**Manual Sync:**
+If needed, you can also run the sync manually:
+```bash
+./scripts/sync-certs-from-rancher-manager.sh
+```
+
+For more details, see **[docs/cert-management-cloudflare-letsencrypt.md](../docs/cert-management-cloudflare-letsencrypt.md)**.
+
 ## Troubleshooting
 
 ### Certificate Not Issuing

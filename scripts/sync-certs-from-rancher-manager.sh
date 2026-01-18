@@ -25,11 +25,16 @@ SOURCE_CLUSTER="rancher-manager"
 DOWNSTREAM_CLUSTERS=("nprd-apps" "poc-apps" "prd-apps")
 
 # Secrets to copy: namespace/secret-name
+# Note: We only request wildcard-dataknife-net-tls once in cert-manager namespace,
+# then copy it to kube-system for default ingress (avoids duplicate Let's Encrypt requests)
 SECRETS=(
     "cert-manager/wildcard-dataknife-net-tls"
     "cert-manager/wildcard-dataknife-ai-tls"
-    "kube-system/wildcard-dataknife-net-tls"
 )
+
+# Special: Copy wildcard-dataknife-net-tls to kube-system for default ingress
+DEFAULT_INGRESS_SECRET="cert-manager/wildcard-dataknife-net-tls"
+DEFAULT_INGRESS_TARGET_NS="kube-system"
 
 # Function to copy a secret from source to target cluster
 copy_secret() {
@@ -75,6 +80,47 @@ copy_secret() {
     echo "    ✅ Secret ${namespace}/${secret_name} synced successfully"
 }
 
+# Function to copy secret to a different namespace (for default ingress)
+copy_secret_to_namespace() {
+    local source_ctx="$1"
+    local target_ctx="$2"
+    local source_ns="${3%%/*}"
+    local secret_name="${3##*/}"
+    local target_ns="$4"
+    
+    echo "  Copying ${source_ns}/${secret_name} to ${target_ns}/${secret_name} on ${target_ctx}..."
+    
+    # Check if secret exists on source cluster
+    if ! kubectl --context="${source_ctx}" get secret -n "${source_ns}" "${secret_name}" >/dev/null 2>&1; then
+        echo "    ⚠️  Secret ${source_ns}/${secret_name} not found on ${source_ctx}, skipping..."
+        return 1
+    fi
+    
+    # Get secret data from source cluster
+    local secret_data
+    secret_data=$(kubectl --context="${source_ctx}" get secret -n "${source_ns}" "${secret_name}" -o json)
+    
+    # Create new secret manifest with target namespace
+    local new_secret
+    new_secret=$(echo "${secret_data}" | jq -c --arg ns "${target_ns}" '{
+        apiVersion: "v1",
+        kind: "Secret",
+        metadata: {
+            name: .metadata.name,
+            namespace: $ns,
+            labels: (.metadata.labels // {}),
+            annotations: (.metadata.annotations // {})
+        },
+        type: .type,
+        data: .data
+    }')
+    
+    # Apply to target cluster
+    echo "${new_secret}" | kubectl --context="${target_ctx}" apply -f -
+    
+    echo "    ✅ Secret ${target_ns}/${secret_name} synced successfully"
+}
+
 # Function to sync secrets to a target cluster
 sync_to_cluster() {
     local target_cluster="$1"
@@ -82,9 +128,15 @@ sync_to_cluster() {
     echo ""
     echo "🔄 Syncing certificates to ${target_cluster}..."
     
+    # Copy main secrets
     for secret in "${SECRETS[@]}"; do
         copy_secret "${SOURCE_CLUSTER}" "${target_cluster}" "${secret}" || true
     done
+    
+    # Copy wildcard-dataknife-net-tls to kube-system for default ingress
+    # This avoids requesting the same certificate twice from Let's Encrypt
+    copy_secret_to_namespace "${SOURCE_CLUSTER}" "${target_cluster}" \
+        "${DEFAULT_INGRESS_SECRET}" "${DEFAULT_INGRESS_TARGET_NS}" || true
     
     echo "✅ Finished syncing to ${target_cluster}"
 }
