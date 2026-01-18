@@ -8,7 +8,7 @@ kind: Kustomization
 #
 # This is the ONLY cluster that requests certificates from Let's Encrypt.
 # TLS secrets are synced to downstream clusters via scripts/sync-certs-from-rancher-manager.sh
-# This reduces Let's Encrypt certificate requests from 8 (4 clusters × 2 certs) to just 2.
+# This reduces Let's Encrypt certificate requests from 4 (4 clusters × 1 cert) to just 1.
 # Note: We only request wildcard-dataknife-net once; the secret is copied to kube-system
 # for default ingress (avoids duplicate requests for the same DNS names).
 resources:
@@ -18,7 +18,6 @@ resources:
   # Note: We only request one certificate for *.dataknife.net; the secret is copied
   # to kube-system for default ingress via the sync script
   - certificate-wildcard-dataknife-net.yaml
-  - certificate-wildcard-dataknife-ai.yaml
   # ConfigMap for nginx-ingress default SSL cert (references secret copied by sync script)
   - configmap-default-cert.yaml
   # Certificate sync automation (CronJob to sync certs to downstream clusters)

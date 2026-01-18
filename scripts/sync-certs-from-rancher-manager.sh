@@ -8,7 +8,6 @@
 #
 # Secrets to copy:
 # - cert-manager/wildcard-dataknife-net-tls
-# - cert-manager/wildcard-dataknife-ai-tls
 # - kube-system/wildcard-dataknife-net-tls (for nginx default SSL)
 #
 # Usage:
@@ -29,7 +28,6 @@ DOWNSTREAM_CLUSTERS=("nprd-apps" "poc-apps" "prd-apps")
 # then copy it to kube-system for default ingress (avoids duplicate Let's Encrypt requests)
 SECRETS=(
     "cert-manager/wildcard-dataknife-net-tls"
-    "cert-manager/wildcard-dataknife-ai-tls"
 )
 
 # Special: Copy wildcard-dataknife-net-tls to kube-system for default ingress

@@ -12,11 +12,10 @@ This document captures what we learned running cert-manager with Cloudflare (DNS
 - **Downstream clusters** (`nprd-apps`, `poc-apps`, `prd-apps`) receive TLS secrets synced from `rancher-manager`
 - **Certificate sync** is performed via `scripts/sync-certs-from-rancher-manager.sh`
 
-This reduces certificate requests from **8 orders** (4 clusters × 2 certificates) to just **2 orders** (wildcard-dataknife-net, wildcard-dataknife-ai), staying well within Let's Encrypt's "5 per exact set" rate limit.
+This reduces certificate requests from **4 orders** (4 clusters × 1 certificate) to just **1 order** (wildcard-dataknife-net), staying well within Let's Encrypt's "5 per exact set" rate limit.
 
 **Certificates issued on rancher-manager:**
 - `cert-manager/wildcard-dataknife-net-tls` (requested from Let's Encrypt)
-- `cert-manager/wildcard-dataknife-ai-tls` (requested from Let's Encrypt)
 - `kube-system/wildcard-dataknife-net-tls` (copied from `cert-manager/wildcard-dataknife-net-tls` for nginx default SSL)
 
 **Note:** We only request `wildcard-dataknife-net-tls` once in the `cert-manager` namespace. The secret is then copied to `kube-system` for the default ingress controller, avoiding duplicate Let's Encrypt requests for the same DNS names.
@@ -149,7 +148,7 @@ The ClusterIssuer references this via `apiTokenSecretRef` (name `cloudflare-api-
 ### ClusterIssuer (DNS-01 + Cloudflare)
 
 - Use `dns01.cloudflare.apiTokenSecretRef` (not `apiKeySecretRef`).
-- Use `selector.dnsNames` so only the right domains use this solver (e.g. `*.dataknife.net`, `dataknife.net`, `*.dataknife.ai`, `dataknife.ai`).
+- Use `selector.dnsNames` so only the right domains use this solver (e.g. `*.dataknife.net`, `dataknife.net`).
 - Cluster-scoped; no `namespace` in the ClusterIssuer.
 
 ---
@@ -183,7 +182,7 @@ into `cert-manager`, both using `secretName: wildcard-dataknife-net-tls` → **t
 **Fix:** Do **not** set `namespace` in the overlay `kustomization.yaml`. Rely on `metadata.namespace` in each resource:
 
 - ClusterIssuer: cluster-scoped (no namespace)
-- `wildcard-dataknife-net`, `wildcard-dataknife-ai`: `cert-manager`
+- `wildcard-dataknife-net`: `cert-manager`
 - `wildcard-dataknife-net-default-ingress`, ConfigMap for default cert: `kube-system`
 
 Then:

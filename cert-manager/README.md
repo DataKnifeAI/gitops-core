@@ -6,7 +6,6 @@ This directory contains GitOps configurations for automatic Let's Encrypt wildca
 
 This configuration provides automatic TLS certificate management for:
 - `*.dataknife.net` wildcard certificate
-- `*.dataknife.ai` wildcard certificate
 
 Certificates are automatically issued by Let's Encrypt using DNS-01 challenge and renewed before expiration.
 
@@ -36,7 +35,7 @@ cert-manager/
 
 - cert-manager installed on cluster (already installed on nprd-apps)
 - DNS provider API credentials (Cloudflare, Route53, etc.)
-- DNS zones `dataknife.net` and `dataknife.ai` accessible via API
+- DNS zone `dataknife.net` accessible via API
 
 ### 2. Configure DNS Provider
 

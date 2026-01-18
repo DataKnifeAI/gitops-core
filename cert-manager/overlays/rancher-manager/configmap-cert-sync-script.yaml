@@ -9,7 +9,7 @@ metadata:
     purpose: cert-sync
 data:
   sync-certs.sh: |
-    #!/bin/sh
+    #!/bin/bash
     #
     # Sync TLS certificates from rancher-manager cluster to downstream clusters
     #
@@ -31,7 +31,6 @@ data:
     # then copy it to kube-system for default ingress (avoids duplicate Let's Encrypt requests)
     SECRETS=(
         "cert-manager/wildcard-dataknife-net-tls"
-        "cert-manager/wildcard-dataknife-ai-tls"
     )
     
     # Special: Copy wildcard-dataknife-net-tls to kube-system for default ingress
