@@ -54,14 +54,3 @@ spec:
         dnsNames:
         - "*.dataknife.net"
         - "dataknife.net"
-    # Solver for *.dataknife.ai wildcard
-    - dns01:
-        # Same DNS provider configuration as above
-        cloudflare:
-          apiTokenSecretRef:
-            name: cloudflare-api-token
-            key: api-token
-      selector:
-        dnsNames:
-        - "*.dataknife.ai"
-        - "dataknife.ai"
