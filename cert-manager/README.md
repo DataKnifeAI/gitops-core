@@ -106,36 +106,46 @@ spec:
 
 ### Default Ingress Certificate
 
-The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers.
+The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers on all downstream clusters.
 
-This means:
-- **Any Ingress without TLS configuration** will automatically use this certificate
-- **No need to specify `secretName`** in Ingress resources for dataknife.net domains
-- The certificate is automatically created in the `kube-system` namespace for nginx-ingress
+**How it works:**
+- The Let's Encrypt wildcard certificate is issued on `rancher-manager` cluster
+- The certificate secret (`wildcard-dataknife-net-tls`) is automatically synced to `kube-system` namespace on all downstream clusters via CronJob
+- The nginx-ingress DaemonSet is patched to use `--default-ssl-certificate=kube-system/wildcard-dataknife-net-tls` as a command-line flag
+- **Any Ingress without TLS configuration** automatically uses this certificate
+- **No need to specify `secretName`** in Ingress resources for `*.dataknife.net` domains
 
 **Important:** RKE2's nginx-ingress controller requires `--default-ssl-certificate` to be set as a **command-line flag** (not just in ConfigMap). Per [GitHub issue #1408](https://github.com/rancher/rke/issues/1408), this must be configured in the DaemonSet arguments.
 
-**One-time setup per cluster:**
+**GitOps Configuration:**
+- Kustomize patches are configured in each overlay's `kustomization.yaml` to automatically add the flag
+- Patch file: `cert-manager/base/daemonset-nginx-ingress-patch.yaml`
+- Fleet will attempt to apply the patch automatically when syncing
+
+**Manual Setup (if GitOps patch fails):**
+If Fleet/Kustomize cannot patch the RKE2-managed DaemonSet, apply manually:
 ```bash
 kubectl patch daemonset -n kube-system rke2-ingress-nginx-controller \
   --type=json \
   -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--default-ssl-certificate=kube-system/wildcard-dataknife-net-tls"}]'
-```
 
-After applying the patch, restart the nginx-ingress pods:
-```bash
+# Restart pods to pick up the change
 kubectl delete pod -n kube-system -l app=rke2-ingress-nginx-controller
 ```
 
-**Note:** Fleet/Kustomize patches are configured in each overlay's `kustomization.yaml`, but they may not be able to patch RKE2-managed DaemonSets. If the automated patch fails, apply the patch manually using the command above.
+**Best Practice:**
+- Remove explicit `tls` sections from Ingress resources for `*.dataknife.net` domains
+- Let them inherit the default certificate automatically
+- This simplifies configuration and ensures all Ingresses use the same synced certificate
 
-**Example Ingress without TLS specification (uses default certificate):**
+**Example Ingress without TLS (recommended - uses default certificate):**
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-app
 spec:
+  ingressClassName: nginx
   rules:
     - host: app.dataknife.net
       http:
@@ -147,32 +157,95 @@ spec:
                 name: my-app
                 port:
                   number: 80
-  # No TLS section needed - default certificate will be used automatically
+  # No TLS section needed - default Let's Encrypt certificate will be used automatically
 ```
 
-**Example Ingress with explicit TLS (still works, overrides default):**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-app
-spec:
+**Note:** Explicit TLS sections are **not needed** for `*.dataknife.net` domains. The default certificate will be used automatically, and it's automatically synced from `rancher-manager`, ensuring all clusters have the same up-to-date certificate.
+
+**Current Status:**
+All Ingresses across downstream clusters (`nprd-apps`, `poc-apps`, `prd-apps`) are using the secure Let's Encrypt wildcard certificate, either:
+- Via default certificate (Ingress without TLS section) ✅
+- Via explicit TLS reference (Ingress with TLS section pointing to synced secret) ✅
+
+**Verification:**
+To verify an Ingress is using the secure certificate:
+```bash
+# Check certificate served by endpoint
+echo | openssl s_client -servername <hostname> -connect <hostname>:443 2>/dev/null | \
+  openssl x509 -noout -issuer -subject
+
+# Should show:
+# issuer=C=US, O=Let's Encrypt, CN=R12
+# subject=CN=*.dataknife.net
+```
+
+### Updating Rancher Certificate
+
+Rancher has a specific process for updating its certificate. Per the [Rancher documentation](https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/resources/update-rancher-certificate), follow these steps to use the Let's Encrypt wildcard certificate:
+
+**1. Update the `tls-rancher-ingress` secret:**
+```bash
+# Extract certificate and key from kube-system
+kubectl --context rancher-manager get secret -n kube-system wildcard-dataknife-net-tls \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/tls.crt
+kubectl --context rancher-manager get secret -n kube-system wildcard-dataknife-net-tls \
+  -o jsonpath='{.data.tls\.key}' | base64 -d > /tmp/tls.key
+
+# Update the secret (or create if it doesn't exist)
+kubectl --context rancher-manager -n cattle-system create secret tls tls-rancher-ingress \
+  --cert=/tmp/tls.crt \
+  --key=/tmp/tls.key \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Clean up
+rm /tmp/tls.crt /tmp/tls.key
+```
+
+**2. Update Helm values to use secret source:**
+```bash
+# Get current values
+helm --kube-context rancher-manager get values rancher -n cattle-system -o yaml > values.yaml
+
+# Add or update ingress.tls.source
+cat >> values.yaml << EOF
+ingress:
   tls:
-    - hosts:
-        - app.dataknife.net
-      secretName: wildcard-dataknife-net-tls  # Explicit certificate
-  rules:
-    - host: app.dataknife.net
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: my-app
-                port:
-                  number: 80
+    source: secret
+EOF
+
+# Get current chart version
+helm --kube-context rancher-manager ls -n cattle-system
+
+# Upgrade Rancher (replace <VERSION> with current version)
+helm --kube-context rancher-manager upgrade rancher rancher-stable/rancher \
+  --namespace cattle-system \
+  -f values.yaml \
+  --version <VERSION>
 ```
+
+**3. Restart Rancher deployment:**
+```bash
+kubectl --context rancher-manager rollout restart deployment/rancher -n cattle-system
+```
+
+**4. Verify:**
+```bash
+# Wait for pods to be ready
+kubectl --context rancher-manager get pods -n cattle-system -l app=rancher
+
+# Check certificate
+echo | openssl s_client -servername rancher.dataknife.net \
+  -connect rancher.dataknife.net:443 2>/dev/null | \
+  openssl x509 -noout -issuer -subject
+
+# Should show:
+# issuer=C=US, O=Let's Encrypt, CN=R12
+# subject=CN=*.dataknife.net
+```
+
+**Note:** If Rancher was previously using a self-signed or Let's Encrypt certificate, you may also need to:
+- Update Rancher agents on downstream clusters (see Rancher documentation)
+- Force update Fleet clusters in the Rancher UI (Continuous Delivery → Force Update)
 
 ### Sharing Certificates Across Namespaces
 
