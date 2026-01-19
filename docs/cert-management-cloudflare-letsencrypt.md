@@ -395,6 +395,59 @@ echo | openssl s_client -connect rancher.dataknife.net:443 -showcerts 2>/dev/nul
 
 **Note:** This fix is required whenever the Rancher server's certificate changes and the Fleet agent bootstrap secret doesn't include the appropriate CA certificate.
 
+### Fixing kubectl/kubectx Configuration After Certificate Update
+
+After updating Rancher's certificate, your local `kubectl` configuration may fail to connect to clusters with TLS certificate verification errors. This manifests as:
+
+- `kubectl --context <cluster-name>` fails with: `tls: failed to verify certificate: x509: certificate signed by unknown authority`
+- `kubectx` can switch contexts but kubectl commands fail
+- Cluster access through Rancher proxy URLs fails
+
+**Root Cause:**
+When Rancher's certificate changes, the CA certificate in your local kubeconfig may be outdated or missing. Clusters accessed through Rancher's proxy (e.g., `https://rancher.dataknife.net/k8s/clusters/c-xxxxx`) need the Rancher server's CA certificate.
+
+**Solution:**
+
+1. **Download the CA certificate** (if using Let's Encrypt):
+   ```bash
+   curl -s https://letsencrypt.org/certs/isrgrootx1.pem > /tmp/isrg-root-x1.pem
+   ```
+
+2. **Update the cluster configuration** in your kubeconfig:
+   ```bash
+   # For each cluster that goes through Rancher proxy
+   CA_DATA=$(cat /tmp/isrg-root-x1.pem | base64 -w 0)
+   kubectl config set clusters.<cluster-name>.certificate-authority-data "$CA_DATA"
+   ```
+
+3. **Update authentication token** (if you have a fresh kubeconfig file):
+   ```bash
+   # Extract token from fresh kubeconfig
+   TOKEN=$(grep "token:" /path/to/fresh-kubeconfig.yaml | awk '{print $2}' | tr -d '"')
+   kubectl config set-credentials <cluster-name> --token="$TOKEN"
+   ```
+
+4. **Verify the fix**:
+   ```bash
+   kubectl --context <cluster-name> get nodes
+   kubectx <cluster-name>  # Should work without errors
+   ```
+
+**For custom CA certificates:**
+If Rancher uses a custom CA certificate, extract it from the certificate chain:
+```bash
+# Extract CA from certificate chain
+echo | openssl s_client -connect rancher.dataknife.net:443 -showcerts 2>/dev/null | \
+  sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | \
+  tail -35 > /tmp/custom-ca.pem
+
+# Then base64 encode and set
+CA_DATA=$(cat /tmp/custom-ca.pem | base64 -w 0)
+kubectl config set clusters.<cluster-name>.certificate-authority-data "$CA_DATA"
+```
+
+**Note:** This fix is required whenever the Rancher server's certificate changes and your local kubeconfig doesn't include the appropriate CA certificate. The same CA certificate used for Fleet agents should be used for kubectl configuration.
+
 ---
 
 ## References
