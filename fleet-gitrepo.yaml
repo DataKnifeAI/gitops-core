@@ -6,6 +6,8 @@ metadata:
 spec:
   repo: https://github.com/DataKnifeAI/gitops-core
   branch: main
+  # Set to true to pause all bundles from this repo (see docs/fleet-gitops-pause.md)
+  # disabled: true
   paths:
     - cert-manager/overlays/rancher-manager
     - cert-manager/overlays/nprd-apps

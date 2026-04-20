@@ -178,8 +178,21 @@ The ClusterIssuer references this via `apiTokenSecretRef` (name `cloudflare-api-
 ### ClusterIssuer (DNS-01 + Cloudflare)
 
 - Use `dns01.cloudflare.apiTokenSecretRef` (not `apiKeySecretRef`).
-- Use `selector.dnsNames` so only the right domains use this solver (e.g. `*.dataknife.net`, `dataknife.net`).
+- Prefer **`selector.dnsZones`** (e.g. `dataknife.net`, `dataknife.ai`) so **every hostname in that DNS zone** uses the Cloudflare DNS-01 solver—including names like `rancher.dataknife.net` that do not match a `*.dataknife.net` **dnsNames** selector the way cert-manager evaluates it. Use one solver per zone if both `.net` and `.ai` live in Cloudflare.
+- Avoid relying only on `selector.dnsNames: ["*.dataknife.net", "dataknife.net"]` for mixed orders; that can produce **“no configured challenge solvers”** for some hostnames.
 - Cluster-scoped; no `namespace` in the ClusterIssuer.
+
+### cert-manager version
+
+- Use **cert-manager v1.14+** (v1.16.x recommended) for current Cloudflare DNS-01 behavior and CRD compatibility. Older releases (e.g. v1.13) were observed to wedge ACME challenge cleanup against Cloudflare (`/zones//dns_records/...` with an empty zone id) until upgrade and stuck-resource cleanup.
+
+### Rancher management URL (`rancher.<domain>`) and Let's Encrypt
+
+- Rancher’s ingress shim may reference a **namespaced `Issuer`** (e.g. `rancher`) that is not deployed; renewals then fail with **Issuer not found**.
+- **Fix:** Point Rancher’s TLS at the same **`ClusterIssuer/letsencrypt-dns01`** used for wildcards:
+  - Set ingress annotation **`cert-manager.io/cluster-issuer: letsencrypt-dns01`** on the Rancher `Ingress` (e.g. `cattle-system/rancher`), **or**
+  - Set the equivalent in Rancher Helm **`values.yaml`** under `ingress.annotations`.
+- Ensure the ClusterIssuer uses **`dnsZones`** including the zone that contains the Rancher hostname (see above).
 
 ---
 

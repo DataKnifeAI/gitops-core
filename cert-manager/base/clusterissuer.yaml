@@ -31,7 +31,8 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-dns01-key
     solvers:
-    # Solver for *.dataknife.net wildcard
+    # Solver for *.dataknife.net and any hostname in the dataknife.net zone (e.g. rancher.dataknife.net).
+    # Use dnsZones (not dnsNames with "*.dataknife.net") so cert-manager matches subdomains correctly for solver selection.
     - dns01:
         # DNS provider - configure in overlay for cluster-specific providers
         # Example: cloudflare
@@ -47,16 +48,14 @@ spec:
         #     key: secret-access-key
         #   region: us-east-1
       selector:
-        dnsNames:
-        - "*.dataknife.net"
-        - "dataknife.net"
-    # Solver for *.dataknife.ai wildcard
+        dnsZones:
+        - dataknife.net
+    # Solver for *.dataknife.ai and apex in the dataknife.ai zone
     - dns01:
         # Same DNS provider configuration as above
       selector:
-        dnsNames:
-        - "*.dataknife.ai"
-        - "dataknife.ai"
+        dnsZones:
+        - dataknife.ai
     # Fallback solver for any other domains (optional)
     # - dns01:
     #     cloudflare:

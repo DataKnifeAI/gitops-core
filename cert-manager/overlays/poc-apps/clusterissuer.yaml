@@ -51,6 +51,5 @@ spec:
         #     name: route53-credentials
         #     key: secret-access-key
       selector:
-        dnsNames:
-        - "*.dataknife.net"
-        - "dataknife.net"
+        dnsZones:
+        - dataknife.net

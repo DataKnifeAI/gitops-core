@@ -16,7 +16,7 @@ if [ -z "$CLOUDFLARE_TOKEN" ]; then
     echo ""
     echo "To get a Cloudflare API token:"
     echo "  1. Go to https://dash.cloudflare.com/profile/api-tokens"
-    echo "  2. Create token with 'Zone' - 'DNS:Edit' permissions"
+    echo "  2. Create token with Zone: DNS:Edit and Zone: Zone:Read (Read is required for zone ID / cleanup)"
     echo "  3. Use the token value here"
     exit 1
 fi

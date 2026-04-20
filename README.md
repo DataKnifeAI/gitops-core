@@ -31,6 +31,7 @@ See [cert-manager/README.md](cert-manager/README.md) for detailed setup and usag
 ## Documentation
 
 - **[Certificate management with Cloudflare and Let's Encrypt](docs/cert-management-cloudflare-letsencrypt.md)** — Rate limits, Cloudflare setup, cluster-specific identifiers, namespaces, RKE2, Fleet, and troubleshooting.
+- **[Fleet pause / resume](docs/fleet-gitops-pause.md)** — Disable `gitops-core` GitOps temporarily.
 
 ### Let's Encrypt rate limits
 
@@ -45,6 +46,10 @@ See [docs/cert-management-cloudflare-letsencrypt.md](docs/cert-management-cloudf
 ## Deployment
 
 This repository is designed to be deployed via Rancher Fleet or other GitOps tools. Each overlay contains cluster-specific configurations.
+
+### Pausing Fleet during maintenance
+
+To stop Fleet from reconciling this repo while you change manifests or fix drift on a cluster, see **[docs/fleet-gitops-pause.md](docs/fleet-gitops-pause.md)** (`spec.disabled` on the `GitRepo`).
 
 ## Contributing
 

@@ -54,18 +54,16 @@ spec:
             name: cloudflare-api-token
             key: api-token
       selector:
-        dnsNames:
-        - "*.dataknife.net"
-        - "dataknife.net"
+        dnsZones:
+        - dataknife.net
     - dns01:
         cloudflare:
           apiTokenSecretRef:
             name: cloudflare-api-token
             key: api-token
       selector:
-        dnsNames:
-        - "*.dataknife.ai"
-        - "dataknife.ai"
+        dnsZones:
+        - dataknife.ai
 ```
 
 Create the secret:
@@ -93,9 +91,8 @@ spec:
             name: route53-credentials
             key: secret-access-key
       selector:
-        dnsNames:
-        - "*.dataknife.net"
-        - "dataknife.net"
+        dnsZones:
+        - dataknife.net
 ```
 
 Create the secret:

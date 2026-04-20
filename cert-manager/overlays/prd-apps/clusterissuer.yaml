@@ -19,7 +19,7 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-dns01-key
     solvers:
-    # Solver for *.dataknife.net wildcard
+    # dataknife.net zone (e.g. *.dataknife.net, apex, subdomains)
     - dns01:
         # OPTION 1 (Recommended): Delegate DNS to Cloudflare
         # Keep domains at Namecheap, but use Cloudflare nameservers
@@ -51,7 +51,14 @@ spec:
         #     name: route53-credentials
         #     key: secret-access-key
       selector:
-        dnsNames:
-        - "*.dataknife.net"
-        - "dataknife.net"
-        - "hc.dataknife.ai"
+        dnsZones:
+        - dataknife.net
+    # dataknife.ai zone (e.g. hc.dataknife.ai, *.dataknife.ai)
+    - dns01:
+        cloudflare:
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+      selector:
+        dnsZones:
+        - dataknife.ai
