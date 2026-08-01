@@ -1,0 +1,19 @@
+# HelmChartConfig for RKE2 ingress-nginx default SSL certificate.
+#
+# ConfigMap alone is insufficient: RKE2's ingress Helm chart reapply
+# overwrites controller args. HelmChartConfig merges into the
+# rke2-ingress-nginx HelmChart and survives reapply.
+#
+# Verified against live nprd-apps HelmChartConfig (kube-system).
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-ingress-nginx
+  namespace: kube-system
+  labels:
+    purpose: default-ssl-certificate
+spec:
+  valuesContent: |-
+    controller:
+      extraArgs:
+        default-ssl-certificate: "kube-system/wildcard-dataknife-net-tls"

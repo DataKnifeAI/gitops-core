@@ -20,6 +20,8 @@ resources:
   - certificate-wildcard-dataknife-net.yaml
   # ConfigMap for nginx-ingress default SSL cert (references secret copied by sync script)
   - configmap-default-cert.yaml
+  # Durable default SSL cert via RKE2 HelmChartConfig (survives chart reapply)
+  - helmchartconfig-rke2-ingress-nginx.yaml
   # Certificate sync automation (CronJob to sync certs to downstream clusters)
   - serviceaccount-cert-sync.yaml
   - configmap-cert-sync-script.yaml

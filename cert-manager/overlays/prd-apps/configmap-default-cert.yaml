@@ -1,10 +1,8 @@
 # ConfigMap to configure nginx-ingress default SSL certificate
 #
-# This ConfigMap configures the nginx-ingress controller to use
-# wildcard-dataknife-net-tls as the default SSL certificate
-#
-# When an Ingress resource doesn't specify a TLS certificate,
-# this default certificate will be used automatically
+# NOTE: ConfigMap alone is insufficient on RKE2 — use
+# helmchartconfig-rke2-ingress-nginx.yaml for durable
+# controller.extraArgs.default-ssl-certificate across Helm reapply.
 apiVersion: v1
 kind: ConfigMap
 metadata:
