@@ -111,27 +111,16 @@ The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL 
 **How it works:**
 - The Let's Encrypt wildcard certificate is issued on `rancher-manager` cluster
 - The certificate secret (`wildcard-dataknife-net-tls`) is automatically synced to `kube-system` namespace on all downstream clusters via CronJob
-- The nginx-ingress DaemonSet is patched to use `--default-ssl-certificate=kube-system/wildcard-dataknife-net-tls` as a command-line flag
+- RKE2 ingress receives `controller.extraArgs.default-ssl-certificate` via `HelmChartConfig` `rke2-ingress-nginx` in `kube-system`
 - **Any Ingress without TLS configuration** automatically uses this certificate
 - **No need to specify `secretName`** in Ingress resources for `*.dataknife.net` domains
 
-**Important:** RKE2's nginx-ingress controller requires `--default-ssl-certificate` to be set as a **command-line flag** (not just in ConfigMap). Per [GitHub issue #1408](https://github.com/rancher/rke/issues/1408), this must be configured in the DaemonSet arguments.
+**Important:** A ConfigMap alone is insufficient for RKE2. The durable approach is a Rancher/RKE2 `HelmChartConfig` for chart `rke2-ingress-nginx`; it sets `--default-ssl-certificate` through Helm values and survives RKE2 ingress Helm reapply. Direct DaemonSet JSON6902 patches do not work via Fleet/Kustomize (the DaemonSet is RKE2-managed and not in our resources).
 
 **GitOps Configuration:**
-- Kustomize patches are configured in each overlay's `kustomization.yaml` to automatically add the flag
-- Patch file: `cert-manager/base/daemonset-nginx-ingress-patch.yaml`
-- Fleet will attempt to apply the patch automatically when syncing
-
-**Manual Setup (if GitOps patch fails):**
-If Fleet/Kustomize cannot patch the RKE2-managed DaemonSet, apply manually:
-```bash
-kubectl patch daemonset -n kube-system rke2-ingress-nginx-controller \
-  --type=json \
-  -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--default-ssl-certificate=kube-system/wildcard-dataknife-net-tls"}]'
-
-# Restart pods to pick up the change
-kubectl delete pod -n kube-system -l app=rke2-ingress-nginx-controller
-```
+- Per-overlay resource: `cert-manager/overlays/{nprd,poc,prd}-apps/helmchartconfig-rke2-ingress-nginx.yaml`
+- Wired next to `configmap-default-cert.yaml` in each apps overlay kustomization
+- ConfigMap `ingress-nginx-controller` remains for documentation/compat; HelmChartConfig is what RKE2 applies
 
 **Best Practice:**
 - Remove explicit `tls` sections from Ingress resources for `*.dataknife.net` domains

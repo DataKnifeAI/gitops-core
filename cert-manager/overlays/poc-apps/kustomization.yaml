@@ -3,7 +3,7 @@ kind: Kustomization
 
 # Note: Do NOT set namespace here. Resources have explicit namespaces:
 # - ClusterIssuer: cluster-scoped (for reference, certificates are synced from rancher-manager)
-# - configmap: kube-system (references secret synced from rancher-manager)
+# - configmap / HelmChartConfig: kube-system (references secret synced from rancher-manager)
 #
 # Certificates are NOT requested on this cluster. TLS secrets are synced from
 # rancher-manager cluster via scripts/sync-certs-from-rancher-manager.sh
@@ -12,27 +12,16 @@ resources:
   # ClusterIssuer (for reference, not used for new certificate requests)
   - clusterissuer.yaml
   # ConfigMap for nginx-ingress default SSL cert (references synced secret)
+  # Note: ConfigMap alone is insufficient for RKE2; HelmChartConfig below is required.
   - configmap-default-cert.yaml
+  # Durable default SSL cert via RKE2 HelmChartConfig (survives chart reapply)
+  - helmchartconfig-rke2-ingress-nginx.yaml
   # Note: Fleet Bundle targeting is handled by GitRepo spec.targets
   # The fleet.yaml Bundle resource is not needed - Fleet auto-creates bundles from GitRepos
 
-# Patch nginx-ingress DaemonSet to add --default-ssl-certificate flag
-# This is required for RKE2 (see GitHub issue #1408)
-# The flag must be set as a command-line argument, not just in ConfigMap
-# 
-# NOTE: patchesJson6902 can only patch resources in the resources list.
-# Since the DaemonSet is managed by RKE2 and not in our resources,
-# this patch cannot be applied via Fleet/Kustomize.
-# Apply manually using: kubectl patch daemonset -n kube-system rke2-ingress-nginx-controller --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--default-ssl-certificate=kube-system/wildcard-dataknife-net-tls"}]'
-# 
-# patchesJson6902:
-#   - target:
-#       group: apps
-#       version: v1
-#       kind: DaemonSet
-#       name: rke2-ingress-nginx-controller
-#       namespace: kube-system
-#     path: daemonset-nginx-ingress-patch.yaml
+# Obsolete: patchesJson6902 against the RKE2-managed DaemonSet cannot be applied
+# via Fleet/Kustomize (DaemonSet is not in resources). Prefer HelmChartConfig above.
+# daemonset-nginx-ingress-patch.yaml is retained for historical reference only.
 
 commonLabels:
   app: cert-manager
