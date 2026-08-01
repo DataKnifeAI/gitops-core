@@ -1,5 +1,8 @@
 # GitOps Core
 
+![GitOps core — certificates via Cloudflare & Let's Encrypt](docs/assets/gitops-core-hero.jpg)
+
+
 GitOps repository for core infrastructure services, focusing on certificate management via Cloudflare and Let's Encrypt.
 
 ## Overview
