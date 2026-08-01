@@ -106,7 +106,7 @@ spec:
 
 ### Default Ingress Certificate
 
-The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers on all downstream clusters.
+The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers on rancher-manager and all apps clusters.
 
 **How it works:**
 - The Let's Encrypt wildcard certificate is issued on `rancher-manager` cluster
@@ -118,8 +118,8 @@ The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL 
 **Important:** A ConfigMap alone is insufficient for RKE2. The durable approach is a Rancher/RKE2 `HelmChartConfig` for chart `rke2-ingress-nginx`; it sets `--default-ssl-certificate` through Helm values and survives RKE2 ingress Helm reapply. Direct DaemonSet JSON6902 patches do not work via Fleet/Kustomize (the DaemonSet is RKE2-managed and not in our resources).
 
 **GitOps Configuration:**
-- Per-overlay resource: `cert-manager/overlays/{nprd,poc,prd}-apps/helmchartconfig-rke2-ingress-nginx.yaml`
-- Wired next to `configmap-default-cert.yaml` in each apps overlay kustomization
+- Per-overlay resource: `cert-manager/overlays/{rancher-manager,nprd-apps,poc-apps,prd-apps}/helmchartconfig-rke2-ingress-nginx.yaml`
+- Wired next to `configmap-default-cert.yaml` in each overlay kustomization
 - ConfigMap `ingress-nginx-controller` remains for documentation/compat; HelmChartConfig is what RKE2 applies
 
 **Best Practice:**
