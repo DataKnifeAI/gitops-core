@@ -121,6 +121,7 @@ The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL 
 - Per-overlay resource: `cert-manager/overlays/{rancher-manager,nprd-apps,poc-apps,prd-apps}/helmchartconfig-rke2-ingress-nginx.yaml`
 - Wired next to `configmap-default-cert.yaml` in each overlay kustomization
 - ConfigMap `ingress-nginx-controller` remains for documentation/compat; HelmChartConfig is what RKE2 applies
+- Overlay `fleet.yaml` sets `helm.takeOwnership: true` so Fleet can adopt a manually applied `HelmChartConfig` (avoids `is not owned by us` / Modified)
 
 **Best Practice:**
 - Remove explicit `tls` sections from Ingress resources for `*.dataknife.net` domains
