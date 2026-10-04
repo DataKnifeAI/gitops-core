@@ -24,7 +24,7 @@ operator but has no CNPG clusters, so it has no overlay.
 
 Each database cluster defines its own `ObjectStore` and `ScheduledBackup` in the repo that owns
 the database (gitops-dev: coder, gitops-mcp: high-command, gitops-tools: authentik and harbor).
-All write to rustfs at `https://rustfs.dataknife.net:30293` (Let's Encrypt certificate, no custom
+All write to rustfs at `https://rustfs.dataknife.net:30292` (Let's Encrypt certificate, no custom
 CA needed) under:
 
 ```
