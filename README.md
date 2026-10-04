@@ -23,6 +23,8 @@ See [cert-manager/README.md](cert-manager/README.md) for detailed setup and usag
 ├── cert-manager/   # Certificate management via Cloudflare and Let's Encrypt
 │   ├── base/       # Base configurations (reusable across clusters)
 │   └── overlays/   # Cluster-specific overlays
+├── cnpg-barman-cloud/  # Barman Cloud plugin for CloudNativePG backups (Helm via Fleet)
+│   └── overlays/   # prd-apps, nprd-apps
 ├── docs/           # Documentation (rate limits, Cloudflare, troubleshooting)
 └── ...
 ```
@@ -30,6 +32,7 @@ See [cert-manager/README.md](cert-manager/README.md) for detailed setup and usag
 ## Services
 
 - **Cert-Manager**: Automatic wildcard certificate provisioning and renewal for `*.dataknife.net` and `*.dataknife.ai` domains
+- **CNPG Barman Cloud plugin**: WAL archiving and base backups of CloudNativePG databases to rustfs — see [cnpg-barman-cloud/README.md](cnpg-barman-cloud/README.md)
 
 ## Documentation
 
