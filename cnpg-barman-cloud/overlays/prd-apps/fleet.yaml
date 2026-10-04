@@ -1,0 +1,23 @@
+# Barman Cloud CNPG-I plugin for CloudNativePG on prd-apps
+# Must run in the operator namespace (cnpg-system). Requires CNPG >= 1.26 and cert-manager.
+# Chart 0.8.1 = plugin v0.15.1
+defaultNamespace: cnpg-system
+
+helm:
+  releaseName: plugin-barman-cloud
+  repo: https://cloudnative-pg.github.io/charts
+  chart: plugin-barman-cloud
+  version: 0.8.1
+  values:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+
+targetCustomizations:
+  - name: prd-apps
+    clusterSelector:
+      matchLabels:
+        management.cattle.io/cluster-display-name: prd-apps

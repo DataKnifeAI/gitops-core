@@ -1,0 +1,31 @@
+# Fleet GitRepos for the Barman Cloud plugin (apply on the Rancher manager, context `local`):
+#   kubectl --context local apply -f cnpg-barman-cloud/fleet-gitrepos.yaml
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: gitops-core-cnpg-barman-cloud-prd-apps
+  namespace: fleet-default
+spec:
+  repo: https://github.com/DataKnifeAI/gitops-core
+  branch: main
+  paths:
+    - cnpg-barman-cloud/overlays/prd-apps
+  targets:
+    - clusterSelector:
+        matchLabels:
+          management.cattle.io/cluster-display-name: prd-apps
+---
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: gitops-core-cnpg-barman-cloud-nprd-apps
+  namespace: fleet-default
+spec:
+  repo: https://github.com/DataKnifeAI/gitops-core
+  branch: main
+  paths:
+    - cnpg-barman-cloud/overlays/nprd-apps
+  targets:
+    - clusterSelector:
+        matchLabels:
+          management.cattle.io/cluster-display-name: nprd-apps
