@@ -6,7 +6,7 @@ This directory contains the base configuration for cert-manager to automatically
 
 This configuration provides:
 - **ClusterIssuer**: Let's Encrypt issuer using DNS-01 challenge (required for wildcards)
-- **Certificates**: Automatic certificate provisioning for `*.dataknife.net` and `*.dataknife.ai`
+- **Certificates**: Automatic certificate provisioning for `*.dataknife.net` (the ClusterIssuer also solves the `dataknife.ai` zone for per-app certificates such as `hc.dataknife.ai`; there is no `*.dataknife.ai` wildcard)
 
 ## Prerequisites
 
@@ -105,10 +105,11 @@ kubectl create secret generic route53-credentials \
 
 ## Certificate Resources
 
-The base configuration includes two Certificate resources:
+The base configuration includes the wildcard Certificate resource:
 
 1. **wildcard-dataknife-net**: Creates `wildcard-dataknife-net-tls` secret
-2. **wildcard-dataknife-ai**: Creates `wildcard-dataknife-ai-tls` secret
+
+The `*.dataknife.ai` wildcard (`wildcard-dataknife-ai-tls`) was retired; `.ai` hosts use their own cert-manager Certificates (e.g. the high-command Gateway's `hc.dataknife.ai`).
 
 These certificates will be automatically renewed by cert-manager 30 days before expiration.
 

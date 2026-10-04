@@ -31,7 +31,7 @@ See [cert-manager/README.md](cert-manager/README.md) for detailed setup and usag
 
 ## Services
 
-- **Cert-Manager**: Automatic wildcard certificate provisioning and renewal for `*.dataknife.net` and `*.dataknife.ai` domains
+- **Cert-Manager**: Automatic wildcard certificate provisioning and renewal for `*.dataknife.net` (plus DNS-01 solving for per-app `dataknife.ai` certificates)
 - **CNPG Barman Cloud plugin**: WAL archiving and base backups of CloudNativePG databases to rustfs — see [cnpg-barman-cloud/README.md](cnpg-barman-cloud/README.md)
 
 ## Documentation

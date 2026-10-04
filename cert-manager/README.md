@@ -270,7 +270,7 @@ kubectl get certificates -n cert-manager -w
 
 **Centralized Certificate Management**: Only `rancher-manager` cluster requests certificates from Let's Encrypt. TLS secrets are automatically synced to downstream clusters (`nprd-apps`, `poc-apps`, `prd-apps`) via a Kubernetes CronJob.
 
-This reduces Let's Encrypt certificate requests from 8 (4 clusters × 2 certs) to just 2 (wildcard-net, wildcard-ai), avoiding rate limits.
+This reduces Let's Encrypt certificate requests to a single `*.dataknife.net` wildcard order instead of one per cluster, avoiding rate limits.
 
 ### Automatic Sync via CronJob
 
