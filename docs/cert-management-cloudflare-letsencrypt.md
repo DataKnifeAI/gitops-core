@@ -68,9 +68,13 @@ The sync script (`scripts/sync-certs-from-rancher-manager.sh`) copies secrets fr
 
    **Setup:**
    ```bash
-   # Create the kubeconfig secret with credentials for all clusters
-   ./scripts/create-cert-sync-kubeconfig-secret.sh rancher-manager
+   # Create the kubeconfig secret with credentials for all clusters, built from
+   # ~/.kube/<cluster>-rke2.yaml (RKE2 admin kubeconfigs, direct :6443)
+   ./scripts/create-cert-sync-kubeconfig-secret.sh
    ```
+
+   The Job exits non-zero if any cluster fails to sync, so a broken credential shows up as a
+   `Failed` Job instead of a silent `Complete`.
 
    The CronJob resources are included in `cert-manager/overlays/rancher-manager/`:
    - `serviceaccount-cert-sync.yaml` - ServiceAccount and RBAC

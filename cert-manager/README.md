@@ -278,9 +278,18 @@ A CronJob is configured in `cert-manager/overlays/rancher-manager/` that syncs c
 
 **Setup:**
 ```bash
-# Create kubeconfig secret with credentials for all clusters
-./scripts/create-cert-sync-kubeconfig-secret.sh rancher-manager
+# Create kubeconfig secret with credentials for all clusters, built from the RKE2 admin
+# (break-glass) kubeconfigs ~/.kube/{rancher-manager,nprd-apps,poc-apps,prd-apps}-rke2.yaml
+./scripts/create-cert-sync-kubeconfig-secret.sh
 ```
+
+Every context uses the cluster's apiserver on `:6443` with the RKE2 admin client cert (no Rancher
+tokens, no Rancher-pinned CA). Those certs expire with the RKE2 certificates, so re-fetch the
+`*-rke2.yaml` files and re-run the script after every RKE2 certificate rotation.
+
+**Failure behaviour:** a failure on one cluster does not stop the others, but each failure is
+logged with the kubectl error and the Job exits non-zero (Job `Failed`, not `Complete`). A
+secret is only reported as synced after it was applied and read back with a matching `tls.crt`.
 
 **Verify:**
 ```bash
