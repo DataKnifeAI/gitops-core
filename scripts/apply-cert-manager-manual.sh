@@ -54,7 +54,6 @@ echo ""
 # Step 3: Apply Certificate resources
 echo "Step 3: Applying Certificate resources..."
 kubectl --context "$CLUSTER_CONTEXT" apply -f cert-manager/overlays/rancher-manager/certificate-wildcard-dataknife-net.yaml
-kubectl --context "$CLUSTER_CONTEXT" apply -f cert-manager/overlays/rancher-manager/certificate-wildcard-dataknife-ai.yaml
 
 if [ $? -eq 0 ]; then
     echo "✓ Certificate resources applied"
