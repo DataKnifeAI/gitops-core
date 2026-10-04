@@ -2,85 +2,110 @@
 #
 # Create kubeconfig secret for cert-sync CronJob
 #
-# This script creates a Kubernetes secret containing a kubeconfig file
-# that allows the cert-sync CronJob to access multiple clusters (rancher-manager,
-# nprd-apps, poc-apps, prd-apps) for syncing TLS certificates.
+# This script builds a kubeconfig with contexts rancher-manager, nprd-apps, poc-apps
+# and prd-apps and stores it as secret 'cert-sync-kubeconfig' in the cert-manager
+# namespace on rancher-manager. The CronJob mounts it as /kubeconfig/config.
+#
+# Every context talks to the cluster's kube-apiserver on :6443 directly with the RKE2
+# admin client certificate, so cert-sync does not depend on Rancher, Rancher tokens or
+# Rancher's (dynamiclistener) CA.
 #
 # Prerequisites:
-#   - kubectl configured with contexts: rancher-manager, nprd-apps, poc-apps, prd-apps
-#   - Access to create secrets in cert-manager namespace on rancher-manager cluster
+#   - RKE2 admin (break-glass) kubeconfigs ${KUBECONFIG_DIR}/<cluster>-rke2.yaml for every
+#     cluster (default KUBECONFIG_DIR=~/.kube). Fetch from /etc/rancher/rke2/rke2.yaml on a
+#     server node and rewrite server to https://<cluster-dns>:6443; the endpoint must be in
+#     the apiserver cert SANs and reachable from pods on rancher-manager.
+#   - The secret is written with ${KUBECONFIG_DIR}/rancher-manager-rke2.yaml.
 #
 # Usage:
-#   ./create-cert-sync-kubeconfig-secret.sh [rancher-manager-context]
+#   ./create-cert-sync-kubeconfig-secret.sh
+#   KUBECONFIG_DIR=/path/to/dir ./create-cert-sync-kubeconfig-secret.sh
 #
-# The script will:
-#   1. Export kubeconfig from current kubectl configuration
-#   2. Create a secret 'cert-sync-kubeconfig' in cert-manager namespace
-#   3. The CronJob will mount this secret as /kubeconfig/config
+# The RKE2 admin client certs expire with the RKE2 certificates: re-fetch the
+# <cluster>-rke2.yaml files and re-run this script after every RKE2 cert rotation.
 
 set -euo pipefail
 
-CONTEXT="${1:-rancher-manager}"
+CLUSTERS=("rancher-manager" "nprd-apps" "poc-apps" "prd-apps")
+KUBECONFIG_DIR="${KUBECONFIG_DIR:-${HOME}/.kube}"
 SECRET_NAME="cert-sync-kubeconfig"
 NAMESPACE="cert-manager"
+MANAGER_KUBECONFIG="${KUBECONFIG_DIR}/rancher-manager-rke2.yaml"
 
-echo "📋 Creating kubeconfig secret for cert-sync CronJob..."
-echo "   Context: ${CONTEXT}"
-echo "   Secret: ${SECRET_NAME}"
-echo "   Namespace: ${NAMESPACE}"
+for bin in kubectl jq; do
+    if ! command -v "${bin}" &> /dev/null; then
+        echo "❌ Error: ${bin} not found"
+        exit 1
+    fi
+done
+
+WORKDIR=$(mktemp -d)
+chmod 700 "${WORKDIR}"
+trap 'rm -rf "${WORKDIR}"' EXIT
+
+echo "📋 Building kubeconfig for cert-sync CronJob from ${KUBECONFIG_DIR}/<cluster>-rke2.yaml..."
+
+parts=()
+for cluster in "${CLUSTERS[@]}"; do
+    src="${KUBECONFIG_DIR}/${cluster}-rke2.yaml"
+    dst="${WORKDIR}/${cluster}.json"
+    if [[ ! -f "${src}" ]]; then
+        echo "❌ Error: ${src} not found"
+        exit 1
+    fi
+
+    # Normalise names so the merged kubeconfig has one context per cluster, named as
+    # the sync script expects
+    kubectl --kubeconfig "${src}" config view --raw --minify -o json | \
+        jq --arg n "${cluster}" '
+            .clusters[0].name = $n
+            | .users[0].name = ($n + "-admin")
+            | .contexts[0].name = $n
+            | .contexts[0].context.cluster = $n
+            | .contexts[0].context.user = ($n + "-admin")
+            | ."current-context" = $n' > "${dst}"
+
+    server=$(kubectl --kubeconfig "${dst}" config view -o jsonpath='{.clusters[0].cluster.server}')
+    if [[ "${server}" == *127.0.0.1* || "${server}" == *localhost* ]]; then
+        echo "❌ Error: ${src} still points at ${server}; rewrite it to a reachable endpoint"
+        exit 1
+    fi
+    printf '   %-16s %s ' "${cluster}" "${server}"
+    if ! kubectl --kubeconfig "${dst}" --request-timeout=15s get --raw=/readyz >/dev/null; then
+        echo "❌ unreachable or unauthorized"
+        exit 1
+    fi
+    echo "✅"
+    parts+=("${dst}")
+done
+
+MERGED="${WORKDIR}/config"
+KUBECONFIG=$(IFS=:; echo "${parts[*]}") kubectl config view --raw --flatten > "${MERGED}"
+kubectl --kubeconfig "${MERGED}" config use-context "${CLUSTERS[0]}" >/dev/null
+
 echo ""
+echo "🔐 Writing secret '${SECRET_NAME}' in namespace '${NAMESPACE}' on rancher-manager..."
 
-# Check if context exists
-if ! kubectl config get-contexts "${CONTEXT}" >/dev/null 2>&1; then
-    echo "❌ Error: kubectl context '${CONTEXT}' not found"
-    echo "   Available contexts:"
-    kubectl config get-contexts -o name
-    exit 1
-fi
-
-# Export current kubeconfig (with all contexts) to a temporary file
-TEMP_KUBECONFIG=$(mktemp)
-export KUBECONFIG="${HOME}/.kube/config"
-if [[ ! -f "${KUBECONFIG}" ]]; then
-    echo "❌ Error: kubeconfig file not found at ${KUBECONFIG}"
-    exit 1
-fi
-
-cp "${KUBECONFIG}" "${TEMP_KUBECONFIG}"
-
-echo "📝 Exporting kubeconfig from current kubectl configuration..."
-echo "   Found contexts:"
-kubectl config get-contexts -o name
-
-# Create or update the secret
-echo ""
-echo "🔐 Creating secret '${SECRET_NAME}' in namespace '${NAMESPACE}'..."
-
-kubectl --context="${CONTEXT}" create secret generic "${SECRET_NAME}" \
-    --from-file=config="${TEMP_KUBECONFIG}" \
+# Server-side apply: client-side apply would copy the credentials into the
+# kubectl.kubernetes.io/last-applied-configuration annotation
+kubectl --kubeconfig "${MANAGER_KUBECONFIG}" create secret generic "${SECRET_NAME}" \
+    --from-file=config="${MERGED}" \
     --namespace="${NAMESPACE}" \
     --dry-run=client -o yaml | \
-kubectl --context="${CONTEXT}" apply -f -
+kubectl --kubeconfig "${MANAGER_KUBECONFIG}" apply --server-side --force-conflicts \
+    --field-manager=create-cert-sync-kubeconfig-secret -f -
 
-# Add labels to the secret
-kubectl --context="${CONTEXT}" label secret "${SECRET_NAME}" \
+kubectl --kubeconfig "${MANAGER_KUBECONFIG}" annotate secret "${SECRET_NAME}" \
+    --namespace="${NAMESPACE}" \
+    kubectl.kubernetes.io/last-applied-configuration- >/dev/null 2>&1 || true
+
+kubectl --kubeconfig "${MANAGER_KUBECONFIG}" label secret "${SECRET_NAME}" \
     --namespace="${NAMESPACE}" \
     app=cert-manager \
     managed-by=gitops \
     purpose=cert-sync \
     --overwrite
 
-# Cleanup
-rm -f "${TEMP_KUBECONFIG}"
-
 echo ""
-echo "✅ Secret '${SECRET_NAME}' created/updated successfully!"
-echo ""
-echo "ℹ️  Note: The secret contains kubeconfig with contexts for all clusters."
-echo "   Ensure the kubeconfig has valid credentials for:"
-echo "   - rancher-manager (read secrets)"
-echo "   - nprd-apps (write secrets)"
-echo "   - poc-apps (write secrets)"
-echo "   - prd-apps (write secrets)"
-echo ""
-echo "   The CronJob will automatically sync certificates daily at 2 AM UTC."
+echo "✅ Secret '${SECRET_NAME}' created/updated with contexts: ${CLUSTERS[*]}"
+echo "   Test it: kubectl -n ${NAMESPACE} create job --from=cronjob/cert-sync cert-sync-manual-\$(date +%s)"
