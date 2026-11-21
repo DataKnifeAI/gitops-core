@@ -3,7 +3,7 @@ kind: Kustomization
 
 # Note: Do NOT set namespace here. Resources have explicit namespaces:
 # - ClusterIssuer: cluster-scoped (for reference, certificates are synced from rancher-manager)
-# - configmap / HelmChartConfig: kube-system (references secret synced from rancher-manager)
+# - configmap: kube-system (references secret synced from rancher-manager)
 #
 # Certificates are NOT requested on this cluster. TLS secrets are synced from
 # rancher-manager cluster via scripts/sync-certs-from-rancher-manager.sh
@@ -11,17 +11,10 @@ kind: Kustomization
 resources:
   # ClusterIssuer (for reference, not used for new certificate requests)
   - clusterissuer.yaml
-  # ConfigMap for nginx-ingress default SSL cert (references synced secret)
-  # Note: ConfigMap alone is insufficient for RKE2; HelmChartConfig below is required.
+  # Compat ConfigMap (Traefik default cert is HelmChartConfig rke2-traefik tlsStore)
   - configmap-default-cert.yaml
-  # Durable default SSL cert via RKE2 HelmChartConfig (survives chart reapply)
-  - helmchartconfig-rke2-ingress-nginx.yaml
   # Note: Fleet Bundle targeting is handled by GitRepo spec.targets
   # The fleet.yaml Bundle resource is not needed - Fleet auto-creates bundles from GitRepos
-
-# Obsolete: patchesJson6902 against the RKE2-managed DaemonSet cannot be applied
-# via Fleet/Kustomize (DaemonSet is not in resources). Prefer HelmChartConfig above.
-# daemonset-nginx-ingress-patch.yaml is retained for historical reference only.
 
 commonLabels:
   app: cert-manager

@@ -18,10 +18,8 @@ resources:
   # Note: We only request one certificate for *.dataknife.net; the secret is copied
   # to kube-system for default ingress via the sync script
   - certificate-wildcard-dataknife-net.yaml
-  # ConfigMap for nginx-ingress default SSL cert (references secret copied by sync script)
+  # Compat ConfigMap (Traefik default cert is HelmChartConfig rke2-traefik tlsStore)
   - configmap-default-cert.yaml
-  # Durable default SSL cert via RKE2 HelmChartConfig (survives chart reapply)
-  - helmchartconfig-rke2-ingress-nginx.yaml
   # Certificate sync automation (CronJob to sync certs to downstream clusters)
   - serviceaccount-cert-sync.yaml
   - configmap-cert-sync-script.yaml

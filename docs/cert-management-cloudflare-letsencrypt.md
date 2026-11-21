@@ -1,5 +1,8 @@
 # Certificate Management with Cloudflare and Let's Encrypt
 
+> **Note (2026-11-21):** Clusters run Traefik, not ingress-nginx. Default TLS is Traefik `tlsStore` → `wildcard-dataknife-net-tls`. Sections below that describe nginx DaemonSet/`--default-ssl-certificate` are historical.
+
+
 This document captures what we learned running cert-manager with Cloudflare (DNS-01) and Let's Encrypt across multiple Kubernetes clusters.
 
 ---
