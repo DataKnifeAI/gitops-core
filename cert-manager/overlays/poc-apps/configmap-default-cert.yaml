@@ -1,8 +1,6 @@
-# ConfigMap to configure nginx-ingress default SSL certificate
-#
-# NOTE: ConfigMap alone is insufficient on RKE2 — use
-# helmchartconfig-rke2-ingress-nginx.yaml for durable
-# controller.extraArgs.default-ssl-certificate across Helm reapply.
+# Compat ConfigMap formerly used by nginx-ingress.
+# Traefik default cert is HelmChartConfig rke2-traefik tlsStore
+# (secret kube-system/wildcard-dataknife-net-tls).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,6 +10,4 @@ metadata:
     app: cert-manager
     managed-by: gitops
 data:
-  # Default SSL certificate for nginx-ingress
-  # Format: namespace/secret-name
   default-ssl-certificate: "kube-system/wildcard-dataknife-net-tls"

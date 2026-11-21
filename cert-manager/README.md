@@ -106,27 +106,21 @@ spec:
 
 ### Default Ingress Certificate
 
-The wildcard certificate (`*.dataknife.net`) is configured as the **default SSL certificate** for nginx-ingress controllers on rancher-manager and all apps clusters.
+The wildcard certificate (`*.dataknife.net`) is the **default TLS certificate** for Traefik on rancher-manager and all apps clusters (post ingress-nginx cutover).
 
 **How it works:**
 - The Let's Encrypt wildcard certificate is issued on `rancher-manager` cluster
-- The certificate secret (`wildcard-dataknife-net-tls`) is automatically synced to `kube-system` namespace on all downstream clusters via CronJob
-- RKE2 ingress receives `controller.extraArgs.default-ssl-certificate` via `HelmChartConfig` `rke2-ingress-nginx` in `kube-system`
+- The certificate secret (`wildcard-dataknife-net-tls`) is automatically synced to `kube-system` on all downstream clusters via CronJob
+- Traefik `HelmChartConfig` `rke2-traefik` sets `tlsStore.default.defaultCertificate.secretName: wildcard-dataknife-net-tls` (RKE2 user manifest / Addon)
 - **Any Ingress without TLS configuration** automatically uses this certificate
 - **No need to specify `secretName`** in Ingress resources for `*.dataknife.net` domains
 
-**Important:** A ConfigMap alone is insufficient for RKE2. The durable approach is a Rancher/RKE2 `HelmChartConfig` for chart `rke2-ingress-nginx`; it sets `--default-ssl-certificate` through Helm values and survives RKE2 ingress Helm reapply. Direct DaemonSet JSON6902 patches do not work via Fleet/Kustomize (the DaemonSet is RKE2-managed and not in our resources).
-
-**GitOps Configuration:**
-- Per-overlay resource: `cert-manager/overlays/{rancher-manager,nprd-apps,poc-apps,prd-apps}/helmchartconfig-rke2-ingress-nginx.yaml`
-- Wired next to `configmap-default-cert.yaml` in each overlay kustomization
-- ConfigMap `ingress-nginx-controller` remains for documentation/compat; HelmChartConfig is what RKE2 applies
-- Overlay `fleet.yaml` sets `helm.takeOwnership: true` so Fleet can adopt a manually applied `HelmChartConfig` (avoids `is not owned by us` / Modified)
+**GitOps note:** The old `HelmChartConfig/rke2-ingress-nginx` default-ssl overlay was removed after Traefik cutover. ConfigMap `ingress-nginx-controller` remains as inert compat only.
 
 **Best Practice:**
 - Remove explicit `tls` sections from Ingress resources for `*.dataknife.net` domains
 - Let them inherit the default certificate automatically
-- This simplifies configuration and ensures all Ingresses use the same synced certificate
+- Use `ingressClassName: rke2-ingress-nginx-migration` (Traefik Ingress NGINX provider)
 
 **Example Ingress without TLS (recommended - uses default certificate):**
 ```yaml
@@ -135,7 +129,7 @@ kind: Ingress
 metadata:
   name: my-app
 spec:
-  ingressClassName: nginx
+  ingressClassName: rke2-ingress-nginx-migration
   rules:
     - host: app.dataknife.net
       http:

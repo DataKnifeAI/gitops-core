@@ -4,21 +4,9 @@ kind: Kustomization
 resources:
   - clusterissuer.yaml
   - certificate-wildcard-dataknife-net.yaml
-  # Default ingress certificate (deployed to kube-system for nginx-ingress)
+  # Default ingress certificate (deployed to kube-system; Traefik tlsStore references it)
   - certificate-default-ingress-net.yaml
   - configmap-default-cert.yaml
-
-# Patch nginx-ingress DaemonSet to add --default-ssl-certificate flag
-# This is required for RKE2 (see GitHub issue #1408)
-# The flag must be set as a command-line argument, not just in ConfigMap
-patchesJson6902:
-  - target:
-      group: apps
-      version: v1
-      kind: DaemonSet
-      name: rke2-ingress-nginx-controller
-      namespace: kube-system
-    path: daemonset-nginx-ingress-patch.yaml
 
 commonLabels:
   app: cert-manager
