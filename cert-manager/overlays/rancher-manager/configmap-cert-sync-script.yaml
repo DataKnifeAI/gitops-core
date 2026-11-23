@@ -69,6 +69,15 @@ data:
             return 1
         fi
 
+        # Ensure destination namespace exists (prd-apps may not run cert-manager itself).
+        if ! kc --context="${target_ctx}" get ns "${dst_ns}" &>/dev/null; then
+            echo "    Creating namespace ${target_ctx}/${dst_ns}..."
+            if ! out=$(kc --context="${target_ctx}" create namespace "${dst_ns}" 2>&1); then
+                echo "    ❌ Failed to create namespace ${dst_ns} on ${target_ctx}: ${out}"
+                return 1
+            fi
+        fi
+
         if ! manifest=$(jq -c --arg ns "${dst_ns}" '{
             apiVersion: "v1",
             kind: "Secret",
